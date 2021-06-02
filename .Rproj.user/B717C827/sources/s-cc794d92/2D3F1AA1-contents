@@ -1,0 +1,13 @@
+depressionplot = function(score){
+  ggplotly(
+    depression_total_score %>%
+      ggplot(aes(x = depression_total_score, fill = as.numeric(gender))) +
+      #geom_histogram(alpha = 0.7)+
+      geom_density(alpha = 0.4) +
+      theme_minimal()+
+      geom_vline(aes(xintercept = mean(depression_total_score)), color ='black', linetype=1)+
+      annotate("text", x =  mean(depression_total_score$depression_total_score)+1, y=0.05,label ="mean", color="black" ) +
+      geom_vline(aes(xintercept = score), color ='red', linetype=2) +
+      annotate("text", x =  score+2, y=0.07,label ="my score", color="red" ) 
+  )
+}

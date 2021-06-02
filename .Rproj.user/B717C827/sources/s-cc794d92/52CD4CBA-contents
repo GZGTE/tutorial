@@ -1,0 +1,333 @@
+server = function(input, output, session){
+  source('global.R')
+  source('db/getintradaydata.R')
+  source('db/getintradaysleep.R')
+  source('db/getfoodsforday.R')
+  source('plotsource/intradayplot.R')
+  source('plotsource/sleepplot.R')
+  source('plotsource/dashboardplot.R')
+  source('plotsource/foodtable.R')
+  source('plotsource/heartplot.R')
+  source('plotsource/depressionplot.R')
+  
+  # values ---------------------
+  values <- reactiveValues(
+    TsGetsD_hr = data.frame(),
+    TsGetsD_main = data.frame(),
+    TsGetsD_sp = data.frame(),
+    TsGetsD_food = data.frame(),
+    option1 = character(),
+    option2 = character(),
+    depression_score = data.frame(),
+    depression_datatable = data.frame()
+  )
+  
+  
+  # loop for sidebar Menu
+  output$menu <- renderMenu({
+    sidebarMenu(id = "menu",
+                menuItem("Startpage", tabName = "startpage", icon = icon('home')),
+                menuItem("Dashboard", tabName ="dashboard", icon = icon('dashboard')),
+                menuItem("우울증", tabName="depression", icon = icon("hand-holding-heart")),
+                menuItem("DBcentor", tabName ="dbcenter", icon = icon('database')), 
+                menuItem("대리기사", tabName ="daeri", icon = icon('car'), 
+                         lapply(fsubconcept(1), function(x){ 
+                           menuItem(paste0("대리", x, "팀"), tabName =paste0("daeri", x, "t"), icon = icon('car'), 
+                                    lapply(fuser(1,x), function(x) {menuSubItem(fnames(x), tabName = x, icon =icon('award'))}))
+                         })
+                ),
+                menuItem("라이더스", tabName ="rider", icon = icon('biking'), 
+                         lapply(fsubconcept(2), function(x){ 
+                           menuItem(paste0("라이더", x, "팀"), tabName =paste0("rider", x, "t"), icon = icon('biking'), 
+                                    lapply(fuser(2,x), function(x) {menuSubItem(fnames(x), tabName = x, icon =icon('award'))}))
+                         })
+                ), 
+                menuItem("가사관리사", tabName ="housecare", icon = icon('house-user'), 
+                         lapply(fsubconcept(3), function(x){ 
+                           menuItem(paste0("가사관리", x, "팀"), tabName =paste0("housecare", x, "t"), icon = icon('house-user'), 
+                                    lapply(fuser(3,x), function(x) {menuSubItem(fnames(x), tabName = x, icon =icon('award'))}))
+                         })
+                ) 
+    )
+  })
+  updateTabItems(session,"menu","dashboard")
+  updateTabItems(session,"menu","startpage")
+
+
+  #startpage --------------------------------------------------------------
+
+  output$startImage <- renderImage({
+    list(src = 'db/shinystartpage.png', height="100%", width="100%")
+  }, deleteFile = FALSE)
+  
+  # Dashboard ---------------------------------------------------------------
+  observeEvent(input$submit_dashboardplot1, {
+    values$option1 <- cohort_dictionary1$변수명[which(cohort_dictionary1$변수설명[]==input$plot_option1)]
+    output$dashboardplot1 <- renderPlotly({
+      dashboardplot1(values$option1)
+    })
+  })
+  observeEvent(input$submit_dashboardplot2, {
+    values$option2 <- cohort_dictionary2$변수명[which(cohort_dictionary2$변수설명[]==input$plot_option2)]
+    output$dashboardplot2 <- renderPlotly({
+      dashboardplot2(values$option2)
+    })
+  })
+  
+  # DB center ----------------------
+ 
+  observeEvent(input$submit_hrdate, {
+    values$TsGetsD_hr <- TSID("heart", input$heartdate) 
+    output$intralist_hr <-renderDT({
+      values$TsGetsD_hr %>% pull(source) %>% unique() %>% head() %>% data.frame()
+    })
+  })
+  observeEvent(input$submit_date, {
+    values$TsGetsD_main <- dplyr::bind_rows(lapply(c(input$path), function(x){
+      TSID(x, input$intradate)
+    }))
+    output$intralist_main <-renderDT({
+      values$TsGetsD_main %>% pull(source) %>% unique() %>% head() %>% data.frame()
+    })
+  })
+  
+  observeEvent(input$submit_term, {
+    values$TsGetsD_sp <- SSID(input$intradate1, input$intradate2)
+    output$intralist_sp <-renderDT({
+      values$TsGetsD_sp %>% pull(source) %>% unique() %>% head() %>% data.frame()
+    })
+  })
+  observeEvent(input$submit_day, {
+    values$TsGetsD_food <- FSID(input$intradate3) 
+    output$intralist_food <-renderDT({
+      values$TsGetsD_food %>% pull(source) %>% unique() %>% head() %>% data.frame()
+    })
+  })
+ 
+ 
+  
+  # loop for tab body ---------------
+  
+  output$tabItms <- renderUI ({
+    
+    itemsDyn <- lapply(users$source, function(name){
+      tabItem(tabName = name, uiOutput(name))
+    })
+   
+
+    items <- c(
+      list(tabItem(tabName = "startpage", box(width =12, imageOutput("startImage")))),
+      list(tabItem(tabName = "dashboard", 
+                   column(4, "박스그래프",
+                          box(width = 12,
+                            selectInput('plot_option1', "그래프 요소를 선택하시오:",
+                                        cohort_dictionary1$변수설명), 
+                            actionButton("submit_dashboardplot1", "그리기")
+                          )), 
+                   box(width = 8,
+                          plotlyOutput("dashboardplot1")
+                    ),
+                   column(4, "분포그래프",
+                          box(width = 12,
+                            selectInput('plot_option2', "그래프 요소를 선택하시오:",
+                                        cohort_dictionary2$변수설명), 
+                            actionButton("submit_dashboardplot2", "그리기")
+                          )
+                    ), 
+                    box(width = 8,
+                          plotlyOutput("dashboardplot2")
+                    )
+                   
+                   )
+      ),
+      list(tabItem(tabName = 'depression',
+                   fluidRow(box(width = 6, "안녕하세요 아래 설문 부탁드립니다.", 
+                                column(12, 
+                                       sliderInput("age", "연령:", 
+                                                   min = 15, max = 75, value = 30, step =1), 
+                                       radioButtons("gender", "성별:", 
+                                                    choiceNames = c("여자", "남자"), 
+                                                    choiceValues = c(1,2),
+                                                    inline = TRUE), 
+                                       textAreaInput("id", "이름 +핸드폰 뒷자리 4개(예, 홍길동1234"), 
+                                       lapply(1:9, function(x){
+                                         radioButtons(paste0('rd',x), q_depression[[x]], 
+                                                      choiceNames = bt_depression, choiceValues = sc_depression, inline = TRUE)
+                                       }),
+                                       radioButtons("agree", "개이정보 사용하지 않습니다. 분석에 사용해도 될까요?", 
+                                                    choiceNames = c("네", "아니오"), 
+                                                    choiceValues = c(1,2),
+                                                    inline = TRUE), 
+                                       actionButton("submit_depression", "입력(아래확인)")
+                                ))  
+                            , 
+                            box(width =6, "개인 결과 입니다.", 
+                                htmlOutput("depression"), 
+                                htmlOutput("depression9"),
+                                htmlOutput("depression_html9"), 
+                                tableOutput("depression_table"))
+                            , 
+                            box(width = 6, "내 결과(점선)와 전체 집단 점수 분포", 
+                                plotlyOutput('depression_status_plot')
+                            )
+                   )
+      )),
+      list(tabItem(tabName = "dbcenter",  
+                   box(width=3,
+                       box(width=12,
+                           dateInput('heartdate',
+                                     label = '심박동 데이터 불러오기: yyyy-mm-dd',
+                                     value = Sys.Date()-1), 
+                           actionButton("submit_hrdate", "입력(확인)")
+                       ), 
+                       box(width=12,
+                           DT::dataTableOutput("intralist_hr")
+                       )),
+                box(width=3,
+                   box(width=12,
+                     checkboxGroupInput("path", "Choose graph to draw:",
+                                        choiceNames =
+                                          list(icon("heartbeat"),icon("shoe-prints"),icon("bacon"),icon("fire")),
+                                        choiceValues =
+                                          list("heart", "steps","distance","calories")
+                      ),
+                     dateInput('intradate',
+                               label = '하루 데이터 불러오기: yyyy-mm-dd',
+                               value = Sys.Date()-1),
+                     actionButton("submit_date", "입력(확인)")
+                   ), 
+                   box(width=12,
+                     DT::dataTableOutput("intralist_main")
+                   )),
+                box(width=3,
+                   box(width=12,
+                     dateInput('intradate1',
+                               label = '수면 데이터 시작날짜 : yyyy-mm-dd',
+                               value = Sys.Date()-2), 
+                     dateInput('intradate2',
+                               label = '수면 데이터 끝 날짜 : yyyy-mm-dd',
+                               value = Sys.Date()-1), 
+                     actionButton("submit_term", "입력(확인)")
+                   ),
+                   box(width=12,
+                     DT::dataTableOutput("intralist_sp")
+                   )),
+                box(width=3,
+                    box(width=12,
+                      dateInput('intradate3',
+                                   label = '음식 데이터 불러오기: yyyy-mm-dd',
+                                   value = Sys.Date()-1), 
+                      actionButton("submit_day", "입력(확인)")
+                    ), 
+                    box(width=12,
+                      DT::dataTableOutput("intralist_food")
+                    ))
+        )
+      ),
+      
+      itemsDyn
+    )
+    do.call(tabItems, items)
+  })
+  
+  
+
+  lapply(as.character(users$source), function(name){
+
+
+    output[[name]] <- renderUI ({
+      box(width = 12,
+        box("Results Box1", width = 12,
+          actionButton(paste0("submit_heart_",name), paste0("입력:", fnames(name))),
+          plotlyOutput(paste0("heartplot_", name))
+        ),
+        box("Results Box2", width = 12,
+            actionButton(paste0("submit_main_",name), paste0("입력:", fnames(name))),
+            plotlyOutput(paste0("mainplot_", name))
+        ),
+       box("Results Box3", width = 6,
+            actionButton(paste0("submit_sp_",name), paste0("입력:", fnames(name))),
+            plotlyOutput(paste0("sleepplot_", name))
+       ),
+       box("Results Box4", width = 6,
+           actionButton(paste0("submit_food_",name), paste0("입력:", fnames(name))),
+           DT::dataTableOutput(paste0("foodtable_", name))
+       )
+      )
+   })
+    observeEvent(input[[paste0("submit_heart_",name)]],{
+      
+      output[[paste0("heartplot_", name)]] <- renderPlotly({
+        
+        heartplot(name, values$TsGetsD_hr)
+        
+      })
+    })
+    observeEvent(input[[paste0("submit_main_",name)]],{
+      
+      output[[paste0("mainplot_", name)]] <- renderPlotly({
+      
+        intradayplot(name, values$TsGetsD_main)
+        
+      })
+    })
+    observeEvent(input[[paste0("submit_sp_",name)]],{
+      
+      output[[paste0("sleepplot_", name)]] <- renderPlotly({
+        
+        sleepplot(name, values$TsGetsD_sp)
+        
+      })
+    })
+    observeEvent(input[[paste0("submit_food_",name)]],{
+      
+      output[[paste0("foodtable_", name)]] <- renderDT({
+        
+        foodtable(name, values$TsGetsD_food)
+        
+      })
+    })
+  })
+  
+  
+  
+  
+  
+  
+
+  # depression score ---------------
+  observeEvent(input$submit_depression, {
+    values$depression_score <- 
+      as.numeric(input$rd1) + as.numeric(input$rd2) +as.numeric(input$rd3) + as.numeric(input$rd4)+
+      as.numeric(input$rd5) + as.numeric(input$rd6)+as.numeric(input$rd7) + as.numeric(input$rd8)+
+      as.numeric(input$rd9)
+    
+    output$depression <- renderText({
+      paste("당신의 점수는", values$depression_score, "점")
+    })
+    output$depression9 <- renderText({
+      paste("당신의 9번 점수는", input$rd9, '점')
+    })
+    output$depression_html9 <- renderText(depression_html9)
+    output$depression_table <- renderTable(depression_table)
+    
+    depression_datatable   <- 
+      data.frame(
+        't'  = Sys.time(), 
+        'id' = input$id, 
+        'age'= input$age,
+        'gender'= input$gender, 
+        'agree' = input$agree, 
+        'rd1'   = input$rd1,'rd2'   = input$rd2, 'rd3'   = input$rd3, 
+        'rd4'   = input$rd4, 'rd5'   = input$rd5, 'rd6'   = input$rd6, 
+        'rd7'   = input$rd7, 'rd8'   = input$rd8, 'rd9'   = input$rd9 
+      )
+    
+    output[['depression_status_plot']] <- renderPlotly({
+      depressionplot(values$depression_score)
+    })
+    saveDB(depression_datatable)
+    
+  })
+  
+}

@@ -1,0 +1,58 @@
+#ui, dashboardPage, [header, sidebar, body ]
+ui = dashboardPage(
+  header  = dashboardHeader(
+    title = ("요양보호사 설문지")
+    ), 
+  sidebar = dashboardSidebar(
+    sidebarMenu(
+      menuItem("기본정보", icon = icon("table"), tabName ="Basic"),
+      menuItem("우울증", icon = icon("table"), tabName ="depression"),
+      menuItem("신체부담", icon = icon("table"), tabName ="PhyDemand")
+    )
+  ),
+  body    = dashboardBody(
+    tabItems(
+      tabItem(tabName = "Basic", {
+        box(width=12, "안녕하세요 아래 설문 부탁드립니다.",
+            column(12, 
+                   #동의, 입력"
+                   sliderInput("age", "연령:", 
+                               min =15, max=75, value = 30, step=1), 
+                   radioButtons("gender", "성별:", 
+                                choiceNames = c("여자", "남자"), 
+                                choiceValues = c(1,2),
+                                inline = TRUE), 
+                   textAreaInput("id", "핸드폰 뒷자리 4개"), 
+                   radioButtons("agree", "개이정보 사용하지 않습니다. 분석에 사용해도 될까요?", 
+                                choiceNames = c("네", "아니오"), 
+                                choiceValues = c(1,2),
+                                inline = TRUE), 
+                   actionButton("submit_basic", "입력(아래확인)")
+                   )
+        )
+      }, 
+      box({
+       htmlOutput("Basic_dash") 
+      })
+      ), 
+      tabItem(tabName = "depression", #radio Bt depression : rd
+              box(wide =12, 
+                  actionButton("submit_depression", "입력"),  
+              lapply(1:9, function(x){
+              radioButtons(paste0('rd',x), q_depression[[x]], 
+                           choiceNames = bt_depression, choiceValues = sc_depression, inline = TRUE)
+              })
+              ),
+              box(wide =12, 
+                  htmlOutput("depression"), 
+                  htmlOutput("depression9"),
+                  htmlOutput("depression_html9"), 
+                  tableOutput("depression_table")
+                  )
+             ),
+      tabItem(tabName = "PhyDemand", "신체부담입니다." )
+      
+    )
+    
+  )
+)

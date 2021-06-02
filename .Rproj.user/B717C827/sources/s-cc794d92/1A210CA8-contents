@@ -1,0 +1,51 @@
+server <- function(input, output, session){
+
+  #submit basic data ----------------------
+  observeEvent(input$submit_basic,{
+    output$Basic_dash <- renderTable({basic_table})
+    basic_datatable   <- reactive({
+      data.frame(
+        't'  = Sys.time(), 
+        'id' = input$id, 
+        'age'= input$age,
+        'gender'= input$gender, 
+        'agree' = input$agree
+      )
+    })
+    saveLocal(basic_datatable())
+   
+  })
+  
+  # depression score ---------------
+  observeEvent(input$submit_depression, {
+     depression_score <- reactive({
+       as.numeric(input$rd1) + as.numeric(input$rd2) +as.numeric(input$rd3) + as.numeric(input$rd4)+
+       as.numeric(input$rd5) + as.numeric(input$rd6)+as.numeric(input$rd7) + as.numeric(input$rd8)+
+       as.numeric(input$rd9)
+       })
+     output$depression <- renderText({
+       paste("당신의 점수는", depression_score(), "점")
+     })
+     output$depression9 <- renderText({
+       paste("당신의 9번 점수는", input$rd9, '점')
+     })
+     output$depression_html9 <- renderText(depression_html9)
+     output$depression_table <- renderTable(depression_table)
+     
+     basic_datatable   <- reactive({
+       data.frame(
+         't'  = Sys.time(), 
+         'id' = input$id, 
+         'age'= input$age,
+         'gender'= input$gender, 
+         'agree' = input$agree,
+         'rd9' = input$rd9,
+         'score' = depression_score()
+       )
+     })
+     savedepression(basic_datatable())
+  }
+               
+               )
+  
+}
