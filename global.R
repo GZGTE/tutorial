@@ -37,7 +37,7 @@ cohort_dictionary2 <- cohort_dictionary %>%
 saveDB <- function(data){
   dbWriteTable(con, SQL("surveyout.depression"), value = data, append = TRUE)
 }
-depression_total = dbGetQuery(con1, "SELECT * from surveyout.depression")
+depression_total = dbGetQuery(con, "SELECT * from surveyout.depression")
 
 depression_total_score <- depression_total %>%
   mutate_at(vars(contains('rd')), list(~as.numeric(.))) %>%
