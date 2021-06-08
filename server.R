@@ -139,7 +139,7 @@ server = function(input, output, session){
                                          radioButtons(paste0('rd',x), q_depression[[x]], 
                                                       choiceNames = bt_depression, choiceValues = sc_depression, inline = TRUE)
                                        }),
-                                       radioButtons("agree", "개이정보 사용하지 않습니다. 분석에 사용해도 될까요?", 
+                                       radioButtons("agree", "개인정보 사용하지 않습니다. 분석에 사용해도 될까요?", 
                                                     choiceNames = c("네", "아니오"), 
                                                     choiceValues = c(1,2),
                                                     inline = TRUE), 
